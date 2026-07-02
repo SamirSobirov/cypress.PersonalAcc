@@ -18,9 +18,9 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Cypress run
+        id: cypress_step # Добавили ID для точного отслеживания статуса этого шага
         uses: cypress-io/github-action@v6
         with:
-          # Проверь путь к файлу теста профиля (измени, если у тебя другая папка)
           spec: cypress/e2e/monitoring/profile.cy.js 
           browser: chrome
         env:
@@ -30,28 +30,37 @@ jobs:
       - name: Parse Diagnostic Data
         if: always()
         run: |
-          # Читаем статус авторизации из файла
+          API_STATUS="UNKNOWN"
+          
+          # Безопасное чтение файла
           if [ -f auth_api_status.txt ]; then
-            API_STATUS=$(cat auth_api_status.txt | tr -d '[:space:]')
-          else
-            API_STATUS="UNKNOWN"
-          fi
-
-          # Если Cypress выполнился успешно, значит и профиль сохранился
-          if [[ "${{ job.status }}" == "success" ]]; then
-            echo "MSG_STATUS=🟢 Success (Profile Updated)" >> $GITHUB_ENV
-          else
-            # Если тест упал, выясняем на каком этапе
-            if [[ "$API_STATUS" == "UNKNOWN" ]]; then
-              echo "MSG_STATUS=❌ UI Error / Crash before Auth" >> $GITHUB_ENV
-            elif [[ "$API_STATUS" -ge 400 ]]; then
-              echo "MSG_STATUS=🆘 Auth API Error (HTTP $API_STATUS)" >> $GITHUB_ENV
-            else
-              echo "MSG_STATUS=⚠️ Failed at Profile Editing Flow" >> $GITHUB_ENV
+            FILE_CONTENT=$(cat auth_api_status.txt | tr -d '[:space:]')
+            # Если файл не пустой, берем из него данные
+            if [ -n "$FILE_CONTENT" ]; then
+              API_STATUS="$FILE_CONTENT"
             fi
           fi
 
-          # Определяем тип запуска для красоты в Telegram
+          # Считываем реальный результат выполнения шага Cypress
+          CYPRESS_OUTCOME="${{ steps.cypress_step.outcome }}"
+
+          # Логика формирования статуса
+          if [[ "$CYPRESS_OUTCOME" == "success" ]]; then
+            MSG_STATUS="🟢 Success (Profile Updated)"
+          else
+            if [[ "$API_STATUS" == "UNKNOWN" ]]; then
+              MSG_STATUS="❌ UI Error / Crash before Auth"
+            # Строгая проверка, что API_STATUS это именно число, прежде чем сравнивать с 400
+            elif [[ "$API_STATUS" =~ ^[0-9]+$ ]] && [[ "$API_STATUS" -ge 400 ]]; then
+              MSG_STATUS="🆘 Auth API Error (HTTP $API_STATUS)"
+            else
+              MSG_STATUS="⚠️ Failed at Profile Editing Flow"
+            fi
+          fi
+
+          echo "MSG_STATUS=$MSG_STATUS" >> $GITHUB_ENV
+
+          # Определяем тип запуска
           if [[ "${{ github.event_name }}" == "schedule" ]]; then
             echo "RUN_TYPE=Hourly ⏰" >> $GITHUB_ENV
           else
