@@ -1,0 +1,86 @@
+name: Personal Profile Management
+
+on:
+  schedule:
+    - cron: '0 */2 * * *' 
+  workflow_dispatch:
+    inputs:
+      user_chat_id:
+        description: 'ID чата для личного ответа'
+        required: false
+        default: ''
+
+jobs:
+  cypress-run:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Cypress run
+        uses: cypress-io/github-action@v6
+        with:
+          # Проверь путь к файлу теста профиля (измени, если у тебя другая папка)
+          spec: cypress/e2e/monitoring/profile.cy.js 
+          browser: chrome
+        env:
+          CYPRESS_LOGIN_EMAIL: ${{ secrets.LOGIN_EMAIL }}
+          CYPRESS_LOGIN_PASSWORD: ${{ secrets.LOGIN_PASSWORD }}
+
+      - name: Parse Diagnostic Data
+        if: always()
+        run: |
+          # Читаем статус авторизации из файла
+          if [ -f auth_api_status.txt ]; then
+            API_STATUS=$(cat auth_api_status.txt | tr -d '[:space:]')
+          else
+            API_STATUS="UNKNOWN"
+          fi
+
+          # Если Cypress выполнился успешно, значит и профиль сохранился
+          if [[ "${{ job.status }}" == "success" ]]; then
+            echo "MSG_STATUS=🟢 Success (Profile Updated)" >> $GITHUB_ENV
+          else
+            # Если тест упал, выясняем на каком этапе
+            if [[ "$API_STATUS" == "UNKNOWN" ]]; then
+              echo "MSG_STATUS=❌ UI Error / Crash before Auth" >> $GITHUB_ENV
+            elif [[ "$API_STATUS" -ge 400 ]]; then
+              echo "MSG_STATUS=🆘 Auth API Error (HTTP $API_STATUS)" >> $GITHUB_ENV
+            else
+              echo "MSG_STATUS=⚠️ Failed at Profile Editing Flow" >> $GITHUB_ENV
+            fi
+          fi
+
+          # Определяем тип запуска для красоты в Telegram
+          if [[ "${{ github.event_name }}" == "schedule" ]]; then
+            echo "RUN_TYPE=Hourly ⏰" >> $GITHUB_ENV
+          else
+            echo "RUN_TYPE=Manual 🔘" >> $GITHUB_ENV
+          fi
+
+      - name: Upload Cypress Screenshots & Videos
+        uses: actions/upload-artifact@v4
+        if: failure() || always()
+        with:
+          name: cypress-artifacts
+          path: |
+            cypress/screenshots/
+            cypress/videos/
+          if-no-files-found: ignore
+
+      - name: Send Telegram Notification
+        if: always()
+        uses: appleboy/telegram-action@master
+        with:
+          to: >-
+            ${{ (github.event.inputs.user_chat_id != '') && 
+            github.event.inputs.user_chat_id || 
+            secrets.TELEGRAM_CHAT_ID }}
+          token: ${{ secrets.TELEGRAM_TOKEN }} 
+          format: markdown
+          message: |
+            ${{ github.event_name == 'schedule' && '📢 **Hourly Monitoring**' || '👤 **Manual Testing**' }}
+            
+            👤 **Module:** Personal Profile Management
+            📊 **Status:** ${{ env.MSG_STATUS }}
+            ⏱️ **Time:** ${{ env.RUN_TYPE }}
