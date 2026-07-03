@@ -78,7 +78,6 @@ jobs:
             secrets.TELEGRAM_CHAT_ID }}
           token: ${{ secrets.TELEGRAM_TOKEN }} 
           format: markdown
-          # Единый стандарт вывода сообщения
           message: |
             ${{ github.event_name == 'schedule' && '📢 **Hourly Monitoring**' || '👤 **Manual Testing**' }}
             

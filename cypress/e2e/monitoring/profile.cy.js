@@ -56,23 +56,19 @@ describe('Profile Management Flow', () => {
     // ЧАСТЬ 2: ПЕРЕХОД В ПРОФИЛЬ И РЕДАКТИРОВАНИЕ
     // =========================================================
     cy.log('🟢 ШАГ 1: Открытие выпадающего меню пользователя');
-    // Клик по аватару в правом верхнем углу (Скриншот image_7a7221.jpg)
     cy.get('.app-avatar.cursor-pointer')
       .should('be.visible')
       .click({ force: true });
 
     cy.log('🟢 ШАГ 2: Переход в раздел Профиль');
-    // Клик по кнопке "Профиль" в выпадающем списке (Скриншот image_7a7247.jpg)
     cy.get('button.app-header-user-menu-item')
       .contains(/Профиль|Profile/i)
       .should('be.visible')
       .click({ force: true });
 
-    // Проверяем, что успешно перешли на страницу профиля
     cy.url({ timeout: 15000 }).should('include', '/profile');
 
     cy.log('🟢 ШАГ 3: Заполнение поля Имя');
-    // Очищаем и вводим "Samir" в инпут с плейсхолдером "Имя" (Скриншот image_7a758b.jpg)
     cy.get('input[placeholder="Имя"]')
       .should('be.visible')
       .focus()
@@ -80,7 +76,6 @@ describe('Profile Management Flow', () => {
       .type('Samir', { delay: 50 });
 
     cy.log('🟢 ШАГ 4: Заполнение поля Фамилия');
-    // Очищаем и вводим "Sobirov" в инпут с плейсхолдером "Фамилия" (Скриншот image_7a7621.jpg)
     cy.get('input[placeholder="Фамилия"]')
       .should('be.visible')
       .focus()
@@ -88,7 +83,6 @@ describe('Profile Management Flow', () => {
       .type('Sobirov', { delay: 50 });
 
     cy.log('🟢 ШАГ 5: Заполнение поля Телефон');
-    // Ввод номера телефона "905059005" в специальный инпут типа tel (Скриншот image_7a7927.jpg)
     cy.get('input[type="tel"]')
       .should('be.visible')
       .focus()
@@ -96,7 +90,6 @@ describe('Profile Management Flow', () => {
       .type('905059005', { delay: 50 });
 
     cy.log('🟢 ШАГ 6: Сохранение изменений');
-    // Клик по основной кнопке "Сохранить" внизу формы (Скриншот image_7a798d.jpg)
     cy.get('button.app-button--primary')
       .contains(/Сохранить|Save/i)
       .should('be.visible')
