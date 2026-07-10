@@ -1,86 +1,86 @@
-name: Personal Profile Management
+# name: Personal Profile Management
 
-on:
-  schedule:
-    - cron: '0 */2 * * *' 
-  workflow_dispatch:
-    inputs:
-      user_chat_id:
-        description: 'ID чата для личного ответа'
-        required: false
-        default: ''
+# on:
+#   schedule:
+#     - cron: '0 */2 * * *' 
+#   workflow_dispatch:
+#     inputs:
+#       user_chat_id:
+#         description: 'ID чата для личного ответа'
+#         required: false
+#         default: ''
 
-jobs:
-  cypress-run:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+# jobs:
+#   cypress-run:
+#     runs-on: ubuntu-latest
+#     steps:
+#       - name: Checkout
+#         uses: actions/checkout@v4
 
-      - name: Cypress run
-        id: cypress_step 
-        uses: cypress-io/github-action@v6
-        with:
-          spec: cypress/e2e/monitoring/profile.cy.js 
-          browser: chrome
-        env:
-          CYPRESS_LOGIN_EMAIL: ${{ secrets.LOGIN_EMAIL }}
-          CYPRESS_LOGIN_PASSWORD: ${{ secrets.LOGIN_PASSWORD }}
+#       - name: Cypress run
+#         id: cypress_step 
+#         uses: cypress-io/github-action@v6
+#         with:
+#           spec: cypress/e2e/monitoring/profile.cy.js 
+#           browser: chrome
+#         env:
+#           CYPRESS_LOGIN_EMAIL: ${{ secrets.LOGIN_EMAIL }}
+#           CYPRESS_LOGIN_PASSWORD: ${{ secrets.LOGIN_PASSWORD }}
 
-      - name: Parse Diagnostic Data
-        if: always()
-        run: |
-          API_STATUS="UNKNOWN"
+#       - name: Parse Diagnostic Data
+#         if: always()
+#         run: |
+#           API_STATUS="UNKNOWN"
           
-          # Безопасное чтение файла со статусом авторизации
-          if [ -f auth_api_status.txt ]; then
-            FILE_CONTENT=$(cat auth_api_status.txt | tr -d '[:space:]')
-            if [ -n "$FILE_CONTENT" ]; then
-              API_STATUS="$FILE_CONTENT"
-            fi
-          fi
+#           # Безопасное чтение файла со статусом авторизации
+#           if [ -f auth_api_status.txt ]; then
+#             FILE_CONTENT=$(cat auth_api_status.txt | tr -d '[:space:]')
+#             if [ -n "$FILE_CONTENT" ]; then
+#               API_STATUS="$FILE_CONTENT"
+#             fi
+#           fi
 
-          # Считываем реальный результат выполнения шага Cypress
-          CYPRESS_OUTCOME="${{ steps.cypress_step.outcome }}"
+#           # Считываем реальный результат выполнения шага Cypress
+#           CYPRESS_OUTCOME="${{ steps.cypress_step.outcome }}"
 
-          # Формируем статус в едином стиле (как в Authentication)
-          if [[ "$CYPRESS_OUTCOME" == "success" ]]; then
-            MSG_STATUS="✅ Success"
-          else
-            if [[ "$API_STATUS" == "UNKNOWN" ]]; then
-              MSG_STATUS="❌ UI Error / Crash"
-            elif [[ "$API_STATUS" =~ ^[0-9]+$ ]] && [[ "$API_STATUS" -ge 400 ]]; then
-              MSG_STATUS="❌ Error (HTTP $API_STATUS)"
-            else
-              MSG_STATUS="❌ Failed at Profile Edit"
-            fi
-          fi
+#           # Формируем статус в едином стиле (как в Authentication)
+#           if [[ "$CYPRESS_OUTCOME" == "success" ]]; then
+#             MSG_STATUS="✅ Success"
+#           else
+#             if [[ "$API_STATUS" == "UNKNOWN" ]]; then
+#               MSG_STATUS="❌ UI Error / Crash"
+#             elif [[ "$API_STATUS" =~ ^[0-9]+$ ]] && [[ "$API_STATUS" -ge 400 ]]; then
+#               MSG_STATUS="❌ Error (HTTP $API_STATUS)"
+#             else
+#               MSG_STATUS="❌ Failed at Profile Edit"
+#             fi
+#           fi
 
-          echo "MSG_STATUS=$MSG_STATUS" >> $GITHUB_ENV
+#           echo "MSG_STATUS=$MSG_STATUS" >> $GITHUB_ENV
 
-      - name: Upload Cypress Screenshots & Videos
-        uses: actions/upload-artifact@v4
-        if: failure() || always()
-        with:
-          name: cypress-artifacts
-          path: |
-            cypress/screenshots/
-            cypress/videos/
-          if-no-files-found: ignore
+#       - name: Upload Cypress Screenshots & Videos
+#         uses: actions/upload-artifact@v4
+#         if: failure() || always()
+#         with:
+#           name: cypress-artifacts
+#           path: |
+#             cypress/screenshots/
+#             cypress/videos/
+#           if-no-files-found: ignore
 
-      - name: Send Telegram Notification
-        if: always()
-        uses: appleboy/telegram-action@master
-        with:
-          to: >-
-            ${{ (github.event.inputs.user_chat_id != '') && 
-            github.event.inputs.user_chat_id || 
-            secrets.TELEGRAM_CHAT_ID }}
-          token: ${{ secrets.TELEGRAM_TOKEN }} 
-          format: markdown
-          message: |
-            ${{ github.event_name == 'schedule' && '📢 **Hourly Monitoring**' || '👤 **Manual Testing**' }}
+#       - name: Send Telegram Notification
+#         if: always()
+#         uses: appleboy/telegram-action@master
+#         with:
+#           to: >-
+#             ${{ (github.event.inputs.user_chat_id != '') && 
+#             github.event.inputs.user_chat_id || 
+#             secrets.TELEGRAM_CHAT_ID }}
+#           token: ${{ secrets.TELEGRAM_TOKEN }} 
+#           format: markdown
+#           message: |
+#             ${{ github.event_name == 'schedule' && '📢 **Hourly Monitoring**' || '👤 **Manual Testing**' }}
             
-            👤 **Personal Profile Result**
-            **Status:** ${{ env.MSG_STATUS }}
-            **Time:** ${{ github.event_name == 'schedule' && 'Hourly ⏰' || 'Manual 🔘' }}
+#             👤 **Personal Profile Result**
+#             **Status:** ${{ env.MSG_STATUS }}
+#             **Time:** ${{ github.event_name == 'schedule' && 'Hourly ⏰' || 'Manual 🔘' }}

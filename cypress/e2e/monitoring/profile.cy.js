@@ -1,5 +1,5 @@
 describe('Profile Management Flow', () => {
-
+  
   before(() => {
     cy.writeFile('auth_api_status.txt', 'UNKNOWN');
   });
